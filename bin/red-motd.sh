@@ -14,7 +14,7 @@ ARGS="$@"
 scriptFile=`which $0`
 
 
-Upgrade () {
+Update () {
   if [ "$EUID" -ne 0 ]; then 
     echo "Update check requires root privileges"
     echo "Example:"
