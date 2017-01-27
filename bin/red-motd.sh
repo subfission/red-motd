@@ -47,7 +47,7 @@ Collect () {
   apacheVersion=`httpd -v | head -1 | awk '{print $3;}'`
   MySQLPath=`which mysql 2>/dev/null`
   MySQLVersion=`$MySQLPath --version 2>/dev/null | awk '{print $3" "$4" "$5;}' | tr -d ","`
-  if [ -z /usr/local/cpanel/version ] ; then
+  if [ -r /usr/local/cpanel/version ] ; then
     cpanelVersion=`cat /usr/local/cpanel/version | awk '{print "v"$1}'`
   else
     cpanelVersion="not installed"
