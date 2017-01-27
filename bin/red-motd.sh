@@ -51,6 +51,7 @@ Collect () {
     cpanelVersion=`cat /usr/local/cpanel/version | awk '{print "v"$1}'`
   else
     cpanelVersion="not installed"
+  fi
   #System uptime
   uptime=`cat /proc/uptime | cut -f1 -d.`
   upDays=$((uptime/60/60/24))
