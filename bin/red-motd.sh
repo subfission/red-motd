@@ -92,7 +92,7 @@ Display () {
 }
 
 PrintVersion () {
-  version=`grep "^#version" $1 | awk '{print $2}' | tr -d ":"`
+  version=`grep "^#version" $scriptFile | awk '{print $2}' | tr -d ":"`
   echo "RedHat MOTD - Version: $version"
   return 0
 }
