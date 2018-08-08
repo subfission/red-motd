@@ -17,17 +17,16 @@ scriptFile=`which $0`
 Update () {
   if [ "$EUID" -ne 0 ]; then 
     echo "Update check requires root privileges"
-    echo "Example:"
-    echo "    sudo $scriptFile $1"
+    exec sudo /bin/bash "$0" update
     exit 1
   fi  
   echo "Updating MOTD script..."
-  curl -s https://raw.githubusercontent.com/subfission/red-motd/master/bin/red-motd.sh > /usr/local/bin/red-motd
-  echo "Complete!"
+  CODE=$(curl -s "https://raw.githubusercontent.com/subfission/red-motd/master/bin/red-motd.sh" 2>/dev/null)
+  [ -z "$CODE" ] && { echo "[!] Unable to download update" && exit 1; }
+  
+  echo "$CODE" > /usr/local/bin/red-motd
   echo
-  echo
-  $SCRIPT_FILE
-  return 0
+  echo "[+] $SCRIPT_FILE updated"
 }
 
 Collect () {
