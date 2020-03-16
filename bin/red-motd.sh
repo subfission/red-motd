@@ -13,7 +13,6 @@ scriptName="$0"
 ARGS="$@"
 scriptFile=`which $0`
 
-
 Update () {
   if [ "$EUID" -ne 0 ]; then 
     echo "Update check requires root privileges"
@@ -30,22 +29,51 @@ Update () {
 }
 
 Collect () {
+  # Get system type
+  SYSTYPE=$(uname -o 2>/dev/null) 
+  
+  # System specific commands: FreeBSD, Debian/Ubuntu, CentOS/RedHat
+  # ====== FreeBSD =======
+  if [ $SYSTYPE == "FreeBSD" ]; then
+    # May show multiple IPs which is fine
+    IP=$(ifconfig 2>/dev/null | sed -En 's/127.0.0.1//;s/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' | tr '\n' ' ')    
+    MEMORY=$(top |grep -Em2 '^(Mem):'| sed -r 's/.{5}//')
+    SWAP=$(top | grep -Em2 '^(Swap):'| sed -r 's/.{6}//')
+  # ======= Ubuntu =======
+  elif [[ $(lsb_release -i 2>/dev/null | cut -d: -f2 | tr -d '[:space:]') == "Ubuntu" ]]; then
+     IP="$(/sbin/ip route get 8.8.8.8 | head -1 | cut -d' ' -f7)"
+     RELEASE=$(lsb_release -d | cut -f2)
+     APACHE=$(apachectl -v 2>/dev/null | head -1 | awk '{print $3 " " $4;}')
+     MEMORY=`free -gh | grep "^Mem" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}'`
+     SWAP=$(free -gh | grep "^Swap" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}')
+  # ======= RedHat ======= 
+  else
+     IP="$(/sbin/ip route get 8.8.8.8 | head -1 | cut -d' ' -f7)"
+     RELEASE=$(cat /etc/redhat-release)
+     APACHE=$(apachectl -v 2>/dev/null | head -1 | awk '{ print $3 " " $4; }')
+     MEMORY=`free -gh | grep "^Mem" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}'`
+     SWAP=`free -gh | grep "^Swap" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}'`
+  fi
+  # ====== Defaults ======
+  if [[ -z $APACHE ]]; then
+    APACHE="not installed"
+  fi
+  # = Universal commands =
   hostname=`uname -n`
-  rootStorage=`df -Ph | grep "/$" | awk '{print "Free: "$4", Used: "$3", Total: "$2}'`
-  tmpStorage=`df -Ph | egrep "/tmp$" | awk '{print "Free: "$4", Used: "$3", Total: "$2}'`
+  rootStorage=`df -Ph / | grep -v Filesystem | awk '{print "Free: "$4", Used: "$3", Total: "$2}'`
+  tmpStorage=`du -sh /tmp | cut -f1`
   userCount=`users | wc -w`
   sessionCount=`who | grep -c "$USER"`
-
-  MEMORY=`free -gho | grep "^Mem" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}'`
-  SWAP=`free -gho | grep "^Swap" | awk '{print "Free: "$4", Used: "$3", Total: "$2;}'`
   PSA=`ps -Afl | wc -l`
   MAXPROC=`/sbin/sysctl -n kernel.pid_max 2>/dev/null`
-  IP="$(/sbin/ip route get 8.8.8.8 | head -1 | cut -d' ' -f8)"
   DATE=`date`
-  apachePath=`which httpd 2>/dev/null`
-  apacheVersion=`httpd -v | head -1 | awk '{print $3;}'`
+  
   MySQLPath=`which mysql 2>/dev/null`
-  MySQLVersion=`$MySQLPath --version 2>/dev/null | awk '{print $3" "$4" "$5;}' | tr -d ","`
+  if [ -z $MySQLPath ]; then
+    MYSQL="not installed"
+  else
+    MYSQL=`$MySQLPath --version 2>/dev/null | awk '{print $3" "$4" "$5;}' | tr -d ","`
+  fi
   if [ -r /usr/local/cpanel/version ] ; then
     cpanelVersion=`cat /usr/local/cpanel/version | awk '{print "v"$1}'`
   else
@@ -69,11 +97,11 @@ Display () {
                   $USER @ $hostname
 =================================================================
              IP = ${IP}
-        Release = $(cat /etc/redhat-release)
+        Release = $RELEASE
          cPanel = $cpanelVersion
          Kernel = $(uname -rs)
-         Apache = $apacheVersion at $apachePath
-          MySQL = $MySQLVersion at $MySQLPath
+         Apache = $APACHE
+          MySQL = $MYSQL
           Users = Currently $userCount user(s) logged on
        Sessions = $sessionCount sessions
       CPU Usage = $LOAD1, $LOAD5, ${LOAD15} (1, 5, 15 min)
